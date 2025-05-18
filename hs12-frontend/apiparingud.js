@@ -97,13 +97,13 @@ async function handleFormSubmit(event) {
 
 async function listiraamatud() {
   try {
-    const responseData = await getDataAsJson("http://localhost:5001/raamatud/");
+    const responseData = await getDataAsJson("fetch-books-backend-atfma3ccece9bma5.northeurope-01.azurewebsites.net/raamatud/");
     const resultElement = document.getElementById("raamatud_result");
     resultElement.innerHTML = "";
 
     for (const filename of responseData.raamatud) {
       const raamatId = filename.endsWith(".txt") ? filename.slice(0, -4) : filename;
-      const downloadUrl = `http://localhost:5001/raamatud/${raamatId}`;
+      const downloadUrl = `fetch-books-backend-atfma3ccece9bma5.northeurope-01.azurewebsites.net/raamatud/${raamatId}`;
       const deleteUrl = downloadUrl;
       resultElement.innerHTML +=
         `<a href="#" onclick="downloadRaamat('${downloadUrl}', '${raamatId}.txt'); return false;">${raamatId}.txt</a> ` +

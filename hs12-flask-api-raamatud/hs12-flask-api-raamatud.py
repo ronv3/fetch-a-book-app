@@ -14,11 +14,13 @@ app = Flask(__name__)
 cors = CORS(app, resources={r"/raamatud/*": {"origins": "*"}, r"/raamatu_otsing/*": {"origins": "*"}})
 
 
-blob_connection_string = os.getenv('AZURE_BLOB_CONNECTION_STRING')
+blob_connection_string = os.getenv('APPSETTING_AzureWebJobsStorage')
 if not blob_connection_string:
-    raise RuntimeError("Set AZURE_BLOB_CONNECTION_STRING in environment")
+    raise RuntimeError("Set APPSETTING_AzureWebJobsStorage in environment")
 blob_service_client = BlobServiceClient.from_connection_string(blob_connection_string)
-blob_container_name = "vahtra-konteiner-hs10"
+blob_container_name = os.getenv('APPSETTING_blob_container_name')
+if not blob_container_name:
+    raise RuntimeError("Set APPSETTING_blob_container_name in environment")
 
 def blob_konteineri_loomine(konteineri_nimi):
     container_client = blob_service_client.get_container_client(container=konteineri_nimi)
