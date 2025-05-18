@@ -84,7 +84,7 @@ function handleResponse(form, responseData) {
 async function handleFormSubmit(event) {
   event.preventDefault();
   const form = event.currentTarget;
-  const url = form.action;
+  const url = form.action.endsWith('/') ? form.action : form.action + '/';
   try {
     const formData = new FormData(form);
     const responseData = await postFormDataAsJson({ url, formData });
