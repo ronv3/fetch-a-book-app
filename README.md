@@ -20,6 +20,9 @@ A simple three-service system for downloading, storing and searching Gutenberg b
    - Static HTML+JS served by Nginx, calls the above APIs  
    - Live list of books, download & delete links, and in-page search  
 
+## *Live at – https://blue-sand-03a05a003.6.azurestaticapps.net/*
+
+
 ---
 
 ## Repository Structure
