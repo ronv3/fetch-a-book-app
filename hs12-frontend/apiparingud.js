@@ -3,6 +3,7 @@
 async function postFormDataAsJson({ url, formData }) {
   const plainFormData = Object.fromEntries(formData.entries());
   const formDataJsonString = JSON.stringify(plainFormData);
+  const API_BASE = "https://fetch-books-backend-atfma3ccece9bma5.northeurope-01.azurewebsites.net";
 
   const fetchOptions = {
     method: "POST",
@@ -97,7 +98,8 @@ async function handleFormSubmit(event) {
 
 async function listiraamatud() {
   try {
-    const responseData = await getDataAsJson("https://fetch-books-backend-atfma3ccece9bma5.northeurope-01.azurewebsites.net/raamatud/");
+    const url = `${API_BASE}/raamatud/`;
+    const responseData = await getDataAsJson(url);
     const resultElement = document.getElementById("raamatud_result");
     resultElement.innerHTML = "";
 
