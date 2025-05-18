@@ -90,7 +90,7 @@ def raamatu_kustutamine(book_id):
     if not book_id.isnumeric():
         return {}, 400
     try:
-        if requests.get(f'http://127.0.0.1:5001/raamatud/{book_id}').status_code == 200:
+        if requests.get(f'https://fetch-books-backend-atfma3ccece9bma5.northeurope-01.azurewebsites.net/{book_id}').status_code == 200:
             blob_kustutamine(book_id + ".txt")
             return {}, 204
         else:
