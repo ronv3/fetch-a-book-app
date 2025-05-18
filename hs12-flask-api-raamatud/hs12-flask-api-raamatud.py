@@ -7,6 +7,8 @@ import os
 import json
 import requests
 from dotenv import load_dotenv
+from azure.core.exceptions import ResourceNotFoundError
+
 
 
 load_dotenv()
@@ -14,11 +16,11 @@ app = Flask(__name__)
 cors = CORS(app, resources={r"/raamatud/*": {"origins": "*"}, r"/raamatu_otsing/*": {"origins": "*"}})
 
 
-blob_connection_string = os.getenv('APPSETTING_AzureWebJobsStorage')
+blob_connection_string = os.getenv('AzureWebJobsStorage')
 if not blob_connection_string:
     raise RuntimeError("Set APPSETTING_AzureWebJobsStorage in environment")
 blob_service_client = BlobServiceClient.from_connection_string(blob_connection_string)
-blob_container_name = os.getenv('APPSETTING_blob_container_name')
+blob_container_name = os.getenv('blob_container_name')
 if not blob_container_name:
     raise RuntimeError("Set APPSETTING_blob_container_name in environment")
 
@@ -88,15 +90,26 @@ def raamatu_allalaadimine(book_id):
 @app.route('/raamatud/<book_id>', methods=['DELETE'])
 def raamatu_kustutamine(book_id):
     if not book_id.isnumeric():
-        return {}, 400
+        return jsonify(error="Invalid raamatu_id"), 400
+
+    blob_name = f"{book_id}.txt"
+    blob_client = blob_service_client.get_blob_client(
+        container=blob_container_name,
+        blob=blob_name
+    )
+
+    if not blob_client.exists():
+        return jsonify(error="Raamat puudub"), 404
+
     try:
-        if requests.get(f'https://fetch-books-backend-atfma3ccece9bma5.northeurope-01.azurewebsites.net/{book_id}').status_code == 200:
-            blob_kustutamine(book_id + ".txt")
-            return {}, 204
-        else:
-            return {}, 404
-    except:
-        return {}, 500
+        blob_client.delete_blob()
+        return ('', 204)
+    except ResourceNotFoundError:
+        # race-condition: someone just deleted it
+        return jsonify(error="Raamat puudub"), 404
+    except Exception as e:
+        # any other failure
+        return jsonify(error=str(e)), 500
 
 
 @app.route('/raamatud/', methods=['POST'])
