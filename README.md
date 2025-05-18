@@ -1,162 +1,189 @@
-# Fetch-a-Book App — Quick-Start Guide
+# Fetch-a-Book App
 
-This document walks you from **fresh machine → running three-service stack** in a few minutes.
+A simple three-service system for downloading, storing and searching Gutenberg books.
+
+1. **Books API** (`hs12-flask-api-raamatud`)  
+   - Exposes CRUD over Azure Blob Storage   
+   - Endpoints:  
+     - `GET  /raamatud/`  
+     - `GET  /raamatud/{id}`  
+     - `POST /raamatud/`  
+     - `DELETE /raamatud/{id}`  
+
+2. **Search API** (`hs12-flask-api-raamatute-otsing`)  
+   - Searches one book or all books for a given word  
+   - Endpoints:  
+     - `POST /raamatu_otsing/`  
+     - `POST /raamatu_otsing/{id}`  (unused in the application)
+
+3. **Front-end** (`hs12-frontend`)  
+   - Static HTML+JS served by Nginx, calls the above APIs  
+   - Live list of books, download & delete links, and in-page search  
+
 ---
 
-## 1 · Prerequisites
+## Repository Structure
 
-* **Git** 2.30 +
-* **Python** 3.8 + on your PATH (for local development only)
-* **Docker Engine** 20 + & **Docker Compose** (plugin or standalone)
-* GitHub account with write access to the repository
-
----
-
-## 2 · Clone the repository
-
-```bash
-git clone git@github.com:ronv3/fetch-a-book-app.git
-cd fetch-a-book-app
+```
+fetch-a-book-app/
+├── hs12-flask-api-raamatud/          ← Books API service
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── hs12-flask-api-raamatud.py
+├── hs12-flask-api-raamatute-otsing/  ← Search API service
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── hs12-flask-api-raamatute-otsing.py
+├── hs12-frontend/                    ← Static UI
+│   ├── Dockerfile
+│   ├── frontend.html
+│   └── apiparingud.js
+├── docker-compose.yml                ← Local dev stack (optional)
+└── .github/                          ← GitHub Actions for Azure Static Web Apps
 ```
 
 ---
 
-## 3 · (Optional) Create & activate a Python virtual environment  
+## Live Azure Deployment
 
-Skip this whole step if you’ll run everything only inside Docker.
+We host:
 
-```bash
-python3 -m venv .venv            # Windows:  py -3 -m venv .venv
-source .venv/bin/activate        # Windows PS:  .venv\Scripts\Activate.ps1
-pip install -r hs12-flask-api-raamatud/requirements.txt
-pip install -r hs12-flask-api-raamatute-otsing/requirements.txt
-```
+- **Books API** and **Search API** on **Azure App Service (Container)**  
+- **Front-end** on **Azure Static Web Apps**  
+
+### Environment Variables
+
+For **both** App Service containers (`fetch-books-backend`, `fetch-books-search`):
+
+| Name                  | Value                                                                                    |
+| --------------------- |------------------------------------------------------------------------------------------|
+| `AzureWebJobsStorage` | `<connection-string>` for your storage account configured to use container based storage |
+| `blob_container_name` | `raamatud`                                                                               |
+
+CORS is enabled in each Flask app (via `flask_cors`).
 
 ---
 
-## 4 · Build Docker images manually (one-off)
+## Deployment Steps
 
-From the repo root:
+### 1. Build & Push Docker Images
 
 ```bash
 # Books API
-docker build -f hs12-flask-api-raamatud/Dockerfile \
-             -t hs12-books-api:latest              \
-             ./hs12-flask-api-raamatud
+docker build \
+  -f hs12-flask-api-raamatud/Dockerfile \
+  -t YOUR_DOCKERHUB_USER/hs12-flask-api-raamatud:latest \
+  hs12-flask-api-raamatud
 
 # Search API
-docker build -f hs12-flask-api-raamatute-otsing/Dockerfile \
-             -t hs12-books-search:latest                   \
-             ./hs12-flask-api-raamatute-otsing
+docker build \
+  -f hs12-flask-api-raamatute-otsing/Dockerfile \
+  -t YOUR_DOCKERHUB_USER/hs12-flask-api-raamatute-otsing:latest \
+  hs12-flask-api-raamatute-otsing
 
-# Front-end
-docker build -f hs12-frontend/Dockerfile \
-             -t hs12-frontend:latest     \
-             ./hs12-frontend
+# Push
+docker push YOUR_DOCKERHUB_USER/hs12-flask-api-raamatud:latest
+docker push YOUR_DOCKERHUB_USER/hs12-flask-api-raamatute-otsing:latest
 ```
+
+### 2. Configure Azure App Service
+
+1. **Create** two Web Apps (Linux, Container), region North Europe, SKU F1.  
+2. Under **Deployment Center → Container Registry**:  
+   - Source: Docker Hub  
+   - Image & tag: `YOUR_DOCKERHUB_USER/hs12-flask-api-raamatud:latest` (and similarly for search)  
+   - Continuous deployment: ON  
+3. Under **Configuration → Application settings**:  
+   - Add `AzureWebJobsStorage` and `blob_container_name` (see above)  
+4. **Restart** the Web Apps or hit Sync.
+
+### 3. Deploy Front-end as Static Web App
+
+1. In Azure: **+ Create → Static Web App**  
+2. **Repository**: this GitHub repo, branch `main`  
+3. **App location**: `/hs12-frontend`  
+4. Leave **API** and **Output** locations empty  
+5. After creation, edit `frontend.html` and `apiparingud.js` to point at your Azure hostnames:
+
+   ```js
+   const BOOKS_API  = "https://<fetch-books-backend>.azurewebsites.net";
+   const SEARCH_API = "https://<fetch-books-search>.azurewebsites.net";
+   ```
+
+6. Commit & push—GitHub Actions will update your Static Web App.
 
 ---
 
-## 5 · Spin everything up with Docker Compose
+## Verifying & Testing
 
-A ready-made **`docker-compose.yml`** lives at the project root:
-
-```yaml
-version: "3.9"
-
-services:
-  api:
-    build: ./hs12-flask-api-raamatud
-    container_name: books-api
-    environment:
-      - FLASK_APP=hs12-flask-api-raamatud.py
-      - FLASK_ENV=production
-    ports: ["5000:5000"]
-    networks: [backend]
-
-  search:
-    build: ./hs12-flask-api-raamatute-otsing
-    container_name: books-search
-    environment:
-      - FLASK_APP=hs12-flask-api-raamatute-otsing.py
-      - FLASK_ENV=production
-    ports: ["5001:5000"]
-    networks: [backend]
-
-  frontend:
-    build: ./hs12-frontend
-    container_name: books-web
-    depends_on: [api, search]
-    ports: ["8080:80"]
-    networks: [backend]
-
-networks:
-  backend:
-```
-
-Start the whole stack:
+### Using `curl`
 
 ```bash
-docker compose up --build -d
+# List
+curl -i https://<BACKEND>/raamatud/
+
+# Add (ID=123)
+curl -i -X POST https://<BACKEND>/raamatud/ \
+  -H "Content-Type: application/json" \
+  -d '{"raamatu_id":"123"}'
+
+# Download
+curl -i https://<BACKEND>/raamatud/123
+
+# Search for “and”
+curl -i -X POST https://<SEARCH_API>/raamatu_otsing/ \
+  -H "Content-Type: application/json" \
+  -d '{"sone":"and"}'
+
+# Delete
+curl -i -X DELETE https://<BACKEND>/raamatud/123
 ```
 
-Verify:
+### In-Browser
 
-* **Front-end:** <http://localhost:8080/>  
-* **Books API:** <http://localhost:5001/>  
-* **Search API:** <http://localhost:5002/>
-
-Shut everything down & remove anonymous volumes:
-
-```bash
-docker compose down -v
-```
+1. Visit your Static Web App URL.  
+2. Use **“Lae alla raamat”** to fetch by Gutenberg ID.  
+3. Click **download** or **[kustuta]** in the **Raamatud** list.  
+4. Use **“Sõne”** search form.
 
 ---
 
-## 6 · Live-reload while coding (optional)
+## Troubleshooting
 
-Create **`docker-compose.override.yml`**; Docker Compose loads it automatically:
-
-```yaml
-services:
-  api:
-    volumes:
-      - ./hs12-flask-api-raamatud:/app
-    command: flask run --host=0.0.0.0 --reload
-
-  search:
-    volumes:
-      - ./hs12-flask-api-raamatute-otsing:/app
-    command: flask run --host=0.0.0.0 --reload
-```
-
-Now each save in the `hs12-*` folders triggers an automatic reload inside the running container.
+- **No PDF trigger?**  
+  Ensure your blobs land in the **hslab11groupa3db/raamatud** container that your Function watches.  
+- **500 on delete?**  
+  Check the HTTP status (should be 204) and tail your App Service log stream.  
+- **Docker not updating?**  
+  Toggle Continuous Deployment OFF→ON or restart.  
 
 ---
 
-## 7 · Everyday Docker Compose commands
+## Further Work
 
-| Task                              | Command                                                            |
-|-----------------------------------|--------------------------------------------------------------------|
-| Check container status            | `docker compose ps`                                                |
-| Tail live logs                    | `docker compose logs -f`                                           |
-| Rebuild only the Books API image  | `docker compose build api`                                         |
-| Purge everything & reclaim space  | `docker compose down -v && docker system prune -f`                 |
+- It is possible to integrate an Azure Function to convert txt books to PDF - implemented on the pictures, although not covered in this repository.
+- Secure the APIs (Azure AD, API keys).
 
 ---
 
-## 8 · Troubleshooting cheat-sheet
+## Function testing in production
 
-| Symptom                                   | Likely fix                                                                                                      |
-|-------------------------------------------|------------------------------------------------------------------------------------------------------------------|
-| **Port already in use**                   | Change the *host* half of any `ports:` mapping—e.g. `8081:80`, `5002:5000`.                                      |
-| **ModuleNotFoundError when container up** | Add the missing package to that service’s `requirements.txt`, then `docker compose build <service>` again.       |
-| **Frontend CORS errors**                  | Enable CORS in Flask via `flask_cors` *or* proxy API paths through Nginx (see `hs12-frontend/nginx.conf`).       |
-| **Code changes not visible**              | Rebuild the image or enable live-reload with the override file (Section 6).                                      |
+### Raamatu loomine
+![Raamatu loomine 1](images/Raamatu-loomine1.png)  
+![Raamatu loomine 2](images/Raamatu-loomine2.png)
 
----
+### Raamatu kustutamine
+![Raamatu kustutamine 1](images/Raamatu-kustutamine1.png)  
+![Raamatu kustutamine 2](images/Raamatu-kustutamine2.png)
 
-### 🎉 You’re ready!
+### Raamatust otsimine
+![Raamatust otsimine](images/Raamatust-otsimine.png)  
 
-Clone the repo, run `docker compose up --build -d`, and start hacking on **Fetch-a-Book** with an isolated, reproducible stack. Happy coding!
+### Raamatu alla laadimine
+![Raamatu alla laadimine](images/Raamatu-alla-laadimine.png)  
+
+### Raamatute nimekirja vaatamine
+![Raamatute nimekirja vaatamine](images/Raamatute-nimekirja-vaatamine.png)  
+
+### Kontroll et PDF fail tekib
+![Kontroll et PDF fail tekib](images/Kontroll-et-PDF-fail-tekib.png)
