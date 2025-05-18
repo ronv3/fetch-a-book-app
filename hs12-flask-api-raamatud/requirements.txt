@@ -1,0 +1,6 @@
+Flask
+requests
+azure-storage-blob
+requests
+typing
+flask-cors

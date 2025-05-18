@@ -1,0 +1,36 @@
+# docker-compose.yml
+version: "3.9"
+
+services:
+  api:
+    build: ./hs12-flask-api-raamatud
+    container_name: books-api
+    environment:
+      - FLASK_APP=hs12-flask-api-raamatud.py
+      - FLASK_ENV=production          # or development
+    ports:
+      - "5001:5000"                   # host:container
+    networks: [backend]
+
+  search:
+    build: ./hs12-flask-api-raamatute-otsing
+    container_name: books-search
+    environment:
+      - FLASK_APP=hs12-flask-api-raamatute-otsing.py
+      - FLASK_ENV=production
+    ports:
+      - "5002:5000"
+    networks: [backend]
+
+  frontend:
+    build: ./hs12-frontend
+    container_name: books-web
+    ports:
+      - "8080:80"
+    depends_on:                       # make sure APIs start first
+      - api
+      - search
+    networks: [backend]
+
+networks:
+  backend:                            # default bridge network
