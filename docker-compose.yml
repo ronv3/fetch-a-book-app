@@ -7,7 +7,7 @@ services:
     container_name: books-api
     environment:
       - FLASK_APP=hs12-flask-api-raamatud.py
-      - FLASK_ENV=production          # or development
+      - FLASK_ENV=development          # or development
     ports:
       - "5001:5000"                   # host:container
     networks: [backend]
@@ -23,7 +23,9 @@ services:
     networks: [backend]
 
   frontend:
-    build: ./hs12-frontend
+    build:
+      context: ./hs12-frontend
+      dockerfile: Dockerfile
     container_name: books-web
     ports:
       - "8080:80"

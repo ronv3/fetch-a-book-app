@@ -4,9 +4,10 @@ from azure.storage.blob import BlobServiceClient
 from flask_cors import CORS
 import os
 import re
+from dotenv import load_dotenv
 
 
-
+load_dotenv()
 app = Flask(__name__)
 cors = CORS(app, resources={r"/raamatud/*": {"origins": "*"}, r"/raamatu_otsing/*": {"origins": "*"}})
 

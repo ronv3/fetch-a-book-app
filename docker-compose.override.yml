@@ -1,0 +1,10 @@
+services:
+  api:
+    volumes:
+      - ./hs12-flask-api-raamatud:/app
+    command: flask run --host=0.0.0.0 --reload
+
+  search:
+    volumes:
+      - ./hs12-flask-api-raamatute-otsing:/app
+    command: flask run --host=0.0.0.0 --reload
